@@ -39,9 +39,13 @@ const emptyForm = (): Form => ({
 export default function ExpensesClient({
   projects,
   organizationName,
+  customers,
+  defaultBillToId,
 }: {
   projects: { id: string; name: string }[]
   organizationName: string
+  customers: { id: string; name: string }[]
+  defaultBillToId: string | null
 }) {
   const today = new Date()
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -58,6 +62,9 @@ export default function ExpensesClient({
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<ExpenseItem | null>(null)
   const [reporting, setReporting] = useState(false)
+  /** A quien se le presenta la rendicion y si lleva las fotos anexas. */
+  const [billToId, setBillToId] = useState(defaultBillToId ?? customers[0]?.id ?? '')
+  const [attachReceipts, setAttachReceipts] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -166,7 +173,7 @@ export default function ExpensesClient({
    */
   const settlementPdf = async () => {
     setReporting(true)
-    const res = await buildSettlementReport(from, to)
+    const res = await buildSettlementReport(from, to, billToId || null, attachReceipts)
     setReporting(false)
 
     if (res.error || !res.base64 || !res.fileName) {
@@ -188,6 +195,7 @@ export default function ExpensesClient({
     setNotice({
       text: s
         ? `Settlement: ${money(s.totalFund)} from the fund, ${money(s.totalOwn)} out of pocket · ${money(s.totalDue)} due` +
+          (s.receiptsAttached > 0 ? ` · ${s.receiptsAttached} receipts attached` : '') +
           (s.missingReceipts > 0 ? ` · ${s.missingReceipts} without a receipt photo` : '')
         : 'Report downloaded.',
       kind: s && s.missingReceipts > 0 ? 'error' : 'ok',
@@ -252,6 +260,22 @@ export default function ExpensesClient({
           <input type="date" value={to} onChange={e => setTo(e.target.value)}
             className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]" />
         </div>
+        {/* Parametros de la rendicion. Viven junto a las fechas y no en el boton
+            porque son parte del mismo recorte: periodo, a quien se le presenta,
+            y si van las fotos. */}
+        <div>
+          <label className={label}>Bill to (settlement)</label>
+          <select value={billToId} onChange={e => setBillToId(e.target.value)}
+            className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]">
+            <option value="">— No customer —</option>
+            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-[11px] font-bold text-[var(--text-secondary)] cursor-pointer pb-1.5">
+          <input type="checkbox" checked={attachReceipts}
+            onChange={e => setAttachReceipts(e.target.checked)} />
+          Attach receipt photos
+        </label>
       </div>
 
       <div className="grid grid-cols-3 gap-3">

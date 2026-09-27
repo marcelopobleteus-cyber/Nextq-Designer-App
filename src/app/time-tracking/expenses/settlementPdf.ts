@@ -18,6 +18,17 @@ import {
   type SettlementRow,
   type SettlementAdvance,
 } from '@/lib/expenseSettlementPdf'
+import { prepareReceiptJpeg } from '@/lib/receiptImage'
+
+const BUCKET = 'expense-receipts'
+
+/**
+ * Tope de lo que puede pesar el anexo ya comprimido. La respuesta de un server
+ * action en Vercel no pasa de unos 4.5 MB y viaja en base64, que agrega un
+ * tercio. Si se pasa, se cortan las hojas que sobran y el informe lo dice, en
+ * vez de fallar entero cuando ya esta todo calculado.
+ */
+const ANNEX_BUDGET = 2_600_000
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
@@ -37,6 +48,8 @@ export interface SettlementSummary {
   unspent: number
   totalDue: number
   missingReceipts: number
+  /** Hojas de recibo que quedaron adjuntas al informe. */
+  receiptsAttached: number
 }
 
 /**
@@ -48,6 +61,7 @@ export async function buildSettlementReport(
   from: string,
   to: string,
   customerId?: string | null,
+  includeReceipts = false,
 ): Promise<{ base64?: string; fileName?: string; summary?: SettlementSummary; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -104,6 +118,38 @@ export async function buildSettlementReport(
   const fundRows = fund.map(toRow)
   const ownRows = own.map(toRow)
 
+  // Las fotos se bajan, se giran y se reducen una sola vez, despues de armar
+  // las filas: el cuerpo del informe no depende de que esto funcione.
+  let annexBytes = 0
+  let receiptsAttached = 0
+  let annexTruncated = false
+
+  if (includeReceipts) {
+    // Se recorre en paralelo la fila dibujada y la fila de la base. Buscar la
+    // foto por fecha y proveedor fallaria el dia que haya dos cargas iguales
+    // en la misma estacion.
+    const pairs: [typeof fund[number], SettlementRow][] = [
+      ...fund.map((src, i) => [src, fundRows[i]] as [typeof fund[number], SettlementRow]),
+      ...own.map((src, i) => [src, ownRows[i]] as [typeof own[number], SettlementRow]),
+    ]
+
+    for (const [source, row] of pairs) {
+      if (!source.receipt_path) continue
+      if (annexBytes >= ANNEX_BUDGET) { annexTruncated = true; continue }
+
+      const { data: blob } = await supabase.storage.from(BUCKET).download(source.receipt_path)
+      if (!blob) continue
+
+      const prepared = prepareReceiptJpeg(new Uint8Array(await blob.arrayBuffer()))
+      if (!prepared) continue
+
+      if (annexBytes + prepared.bytes.byteLength > ANNEX_BUDGET) { annexTruncated = true; continue }
+      annexBytes += prepared.bytes.byteLength
+      receiptsAttached++
+      row.receiptImage = prepared
+    }
+  }
+
   // Entran los anticipos entregados dentro del periodo y ademas aquellos contra
   // los que se gasto en el, aunque se hayan entregado antes.
   const referenced = [...new Set(fund.map(r => r.advance_id).filter(Boolean) as string[])]
@@ -151,13 +197,19 @@ export async function buildSettlementReport(
     if (customer) billTo = { name: customer.name, addressLines: addressLines(customer.address) }
   }
 
+  // Tres lineas como maximo. El pie de esta hoja compite por espacio con el
+  // bloque de liquidacion, y una nota de mas empuja el informe a una segunda
+  // hoja para no decir nada nuevo.
+  const receiptNote = missingReceipts > 0
+    ? `${missingReceipts} of ${rows.length} expenses have no receipt photo attached.`
+    : receiptsAttached > 0
+      ? `All expenses have their receipt on file; ${receiptsAttached} photos are attached at the end${annexTruncated ? ' (some were left out to keep the file small)' : ''}.`
+      : 'All expenses in this period have their receipt on file.'
+
   const notes = [
     'Every line above is backed by its original receipt. Expenses are charged to the project worked that day.',
     'Section A settles the cash advance; section B is money advanced personally and pending reimbursement.',
-    missingReceipts > 0
-      ? `${missingReceipts} of ${rows.length} expenses have no receipt photo attached yet.`
-      : 'All expenses in this period have their receipt on file.',
-    'Prepared from NextQ Designer expense records.',
+    receiptNote,
   ].join('\n')
 
   const bytes = await buildExpenseSettlementPdf({
@@ -181,6 +233,9 @@ export async function buildSettlementReport(
   return {
     base64: Buffer.from(bytes).toString('base64'),
     fileName: `expense-settlement_${from}_${to}.pdf`,
-    summary: { totalAdvanced, totalFund, totalOwn, overspend, unspent, totalDue, missingReceipts },
+    summary: {
+      totalAdvanced, totalFund, totalOwn, overspend, unspent, totalDue,
+      missingReceipts, receiptsAttached,
+    },
   }
 }

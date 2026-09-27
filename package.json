@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "@types/leaflet": "^1.9.22",
+    "jpeg-js": "^0.4.4",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^6.4.1",
     "next": "16.2.6",
