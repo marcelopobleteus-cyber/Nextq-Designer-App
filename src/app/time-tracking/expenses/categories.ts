@@ -23,3 +23,18 @@ export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   meals: 'Meals',
   other: 'Other',
 }
+
+/**
+ * De donde salio el dinero. No es lo mismo un gasto pagado con el efectivo que
+ * entrego el cliente que uno puesto del bolsillo: el primero se repone contra
+ * el fondo y el segundo se reembolsa a la persona. La rendicion los separa por
+ * este campo, asi que marcarlo mal mueve plata de una deuda a la otra.
+ */
+export const PAID_BY = ['employee', 'company_cash'] as const
+
+export type PaidBy = (typeof PAID_BY)[number]
+
+export const PAID_BY_LABEL: Record<PaidBy, string> = {
+  employee: 'Own money — reimburse me',
+  company_cash: 'Company cash advance',
+}

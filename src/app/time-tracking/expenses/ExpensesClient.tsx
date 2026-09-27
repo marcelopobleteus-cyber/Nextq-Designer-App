@@ -6,7 +6,8 @@ import {
   getExpenses, saveExpense, deleteExpense, uploadReceipt,
   type ExpenseItem, type ExpenseInput,
 } from './actions'
-import { EXPENSE_CATEGORIES, CATEGORY_LABEL, type ExpenseCategory } from './categories'
+import { EXPENSE_CATEGORIES, CATEGORY_LABEL, PAID_BY, PAID_BY_LABEL, type ExpenseCategory, type PaidBy } from './categories'
+import { buildSettlementReport } from './settlementPdf'
 
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })
@@ -27,11 +28,12 @@ type Form = {
   vendor: string
   notes: string
   billable: boolean
+  paidBy: PaidBy
 }
 
 const emptyForm = (): Form => ({
   projectId: '', spentOn: iso(new Date()), description: '', amount: '',
-  category: 'fuel', vendor: '', notes: '', billable: false,
+  category: 'fuel', vendor: '', notes: '', billable: false, paidBy: 'employee',
 })
 
 export default function ExpensesClient({
@@ -55,6 +57,7 @@ export default function ExpensesClient({
   const [receipt, setReceipt] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<ExpenseItem | null>(null)
+  const [reporting, setReporting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -91,6 +94,7 @@ export default function ExpensesClient({
       vendor: editing.form.vendor,
       notes: editing.form.notes,
       billable: editing.form.billable,
+      paidBy: editing.form.paidBy,
     }
 
     const res = await saveExpense(editing.id, input)
@@ -155,6 +159,41 @@ export default function ExpensesClient({
     URL.revokeObjectURL(url)
   }
 
+  /**
+   * Rendicion del periodo: separa el fondo de efectivo del dinero propio.
+   * El PDF lo arma el servidor y vuelve en base64; aqui solo se reconstituye y
+   * se baja, igual que la factura de labor. Nada de montos calculados aqui.
+   */
+  const settlementPdf = async () => {
+    setReporting(true)
+    const res = await buildSettlementReport(from, to)
+    setReporting(false)
+
+    if (res.error || !res.base64 || !res.fileName) {
+      setNotice({ text: res.error || 'Could not build the report.', kind: 'error' })
+      return
+    }
+
+    const bin = atob(res.base64)
+    const buf = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = res.fileName
+    a.click()
+    URL.revokeObjectURL(url)
+
+    const s = res.summary
+    setNotice({
+      text: s
+        ? `Settlement: ${money(s.totalFund)} from the fund, ${money(s.totalOwn)} out of pocket · ${money(s.totalDue)} due` +
+          (s.missingReceipts > 0 ? ` · ${s.missingReceipts} without a receipt photo` : '')
+        : 'Report downloaded.',
+      kind: s && s.missingReceipts > 0 ? 'error' : 'ok',
+    })
+  }
+
   const card = 'bg-[var(--surface-1)] border border-[var(--border)] rounded-2xl'
   const field = 'w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)]'
   const label = 'block text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1'
@@ -180,6 +219,10 @@ export default function ExpensesClient({
           <button type="button" onClick={exportCsv}
             className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
             Export CSV
+          </button>
+          <button type="button" onClick={settlementPdf} disabled={reporting}
+            className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer disabled:opacity-50">
+            {reporting ? 'Building…' : 'Settlement PDF'}
           </button>
           <button type="button" onClick={() => { setEditing({ id: null, form: emptyForm() }); setReceipt(null) }}
             className="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-[var(--accent)] text-white cursor-pointer">
@@ -268,7 +311,12 @@ export default function ExpensesClient({
                     {CATEGORY_LABEL[r.category]}
                     {r.billable && <span className="ml-2 px-1.5 py-0.5 rounded border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 text-[9.5px] font-black">BILLABLE</span>}
                   </td>
-                  <td className="px-4 py-3">{r.employeeName}</td>
+                  <td className="px-4 py-3">
+                    {r.employeeName}
+                    <span className={`block text-[10px] font-bold ${r.paidBy === 'company_cash' ? 'text-[var(--accent-text)]' : 'text-[var(--text-tertiary)]'}`}>
+                      {r.paidBy === 'company_cash' ? 'Company cash' : 'Own money'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums font-bold text-[var(--text-primary)]">{money(r.amount)}</td>
                   <td className="px-4 py-3">
                     {r.receiptUrl
@@ -286,7 +334,7 @@ export default function ExpensesClient({
                               form: {
                                 projectId: r.projectId ?? '', spentOn: r.spentOn, description: r.description,
                                 amount: String(r.amount), category: r.category, vendor: r.vendor ?? '',
-                                notes: r.notes ?? '', billable: r.billable,
+                                notes: r.notes ?? '', billable: r.billable, paidBy: r.paidBy,
                               },
                             })
                           }}
@@ -343,6 +391,16 @@ export default function ExpensesClient({
                   onChange={e => setEditing({ ...editing, form: { ...editing.form, category: e.target.value as ExpenseCategory } })}>
                   {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
                 </select>
+              </div>
+              <div className="col-span-2">
+                <label className={label}>Paid with</label>
+                <select className={field} value={editing.form.paidBy}
+                  onChange={e => setEditing({ ...editing, form: { ...editing.form, paidBy: e.target.value as PaidBy } })}>
+                  {PAID_BY.map(v => <option key={v} value={v}>{PAID_BY_LABEL[v]}</option>)}
+                </select>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                  Decides whether this settles the cash advance or gets reimbursed to you.
+                </p>
               </div>
               <div className="col-span-2">
                 <label className={label}>Vendor</label>

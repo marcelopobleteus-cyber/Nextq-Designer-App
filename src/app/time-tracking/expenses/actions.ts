@@ -15,7 +15,7 @@ import { createClient } from '@/utils/supabase/server'
 // Las categorias viven en su propio modulo: un archivo 'use server' solo puede
 // exportar funciones async, y una constante exportada desde aqui compila pero
 // revienta en produccion al invocar el action.
-import type { ExpenseCategory } from './categories'
+import type { ExpenseCategory, PaidBy } from './categories'
 
 const BUCKET = 'expense-receipts'
 
@@ -33,6 +33,8 @@ export interface ExpenseItem {
   vendor: string | null
   notes: string | null
   billable: boolean
+  /** De donde salio la plata. Decide en que seccion cae en la rendicion. */
+  paidBy: PaidBy
   receiptPath: string | null
   /** URL firmada, valida una hora. Null si no hay recibo. */
   receiptUrl: string | null
@@ -48,6 +50,7 @@ export interface ExpenseInput {
   vendor: string
   notes: string
   billable: boolean
+  paidBy: PaidBy
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -81,7 +84,7 @@ export async function getExpenses(
 
   let q = supabase
     .from('project_expenses')
-    .select('id, project_id, profile_id, spent_on, description, amount, category, vendor, notes, billable, receipt_path')
+    .select('id, project_id, profile_id, spent_on, description, amount, category, vendor, notes, billable, paid_by, receipt_path')
     .eq('organization_id', orgId)
     .order('spent_on', { ascending: false })
 
@@ -125,6 +128,7 @@ export async function getExpenses(
     vendor: r.vendor,
     notes: r.notes,
     billable: r.billable,
+    paidBy: r.paid_by === 'company_cash' ? 'company_cash' : 'employee',
     receiptPath: r.receipt_path,
     receiptUrl: r.receipt_path ? (signed.get(r.receipt_path) ?? null) : null,
     canEdit: isManager || r.profile_id === userId,
@@ -157,6 +161,7 @@ export async function saveExpense(
     vendor: input.vendor.trim() || null,
     notes: input.notes.trim() || null,
     billable: input.billable,
+    paid_by: input.paidBy,
     updated_at: new Date().toISOString(),
   }
 

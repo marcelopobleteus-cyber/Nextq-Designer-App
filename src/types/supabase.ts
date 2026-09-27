@@ -1060,6 +1060,60 @@ export type Database = {
           },
         ]
       }
+      cash_advances: {
+        Row: {
+          amount: number
+          closed_at: string | null
+          created_at: string
+          customer_id: string | null
+          given_on: string
+          id: string
+          notes: string | null
+          organization_id: string
+          profile_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          closed_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          given_on?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          profile_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          closed_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          given_on?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          profile_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advances_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_templates: {
         Row: {
           communication_type: string
@@ -3916,6 +3970,7 @@ export type Database = {
       }
       project_expenses: {
         Row: {
+          advance_id: string | null
           amount: number
           billable: boolean
           category: string
@@ -3924,14 +3979,17 @@ export type Database = {
           id: string
           notes: string | null
           organization_id: string
+          paid_by: string
           profile_id: string
           project_id: string | null
           receipt_path: string | null
+          reimbursed_at: string | null
           spent_on: string
           updated_at: string | null
           vendor: string | null
         }
         Insert: {
+          advance_id?: string | null
           amount: number
           billable?: boolean
           category?: string
@@ -3940,14 +3998,17 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id: string
+          paid_by?: string
           profile_id: string
           project_id?: string | null
           receipt_path?: string | null
+          reimbursed_at?: string | null
           spent_on?: string
           updated_at?: string | null
           vendor?: string | null
         }
         Update: {
+          advance_id?: string | null
           amount?: number
           billable?: boolean
           category?: string
@@ -3956,9 +4017,11 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id?: string
+          paid_by?: string
           profile_id?: string
           project_id?: string | null
           receipt_path?: string | null
+          reimbursed_at?: string | null
           spent_on?: string
           updated_at?: string | null
           vendor?: string | null
