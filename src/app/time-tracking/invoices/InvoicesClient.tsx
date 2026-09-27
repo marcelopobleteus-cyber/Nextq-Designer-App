@@ -41,6 +41,15 @@ export default function InvoicesClient() {
   /** Factura a la que se le esta pidiendo la fecha de pago. */
   const [markingPaid, setMarkingPaid] = useState<string | null>(null)
   const [paidOn, setPaidOn] = useState(todayIso())
+  /**
+   * Cambio de estado esperando confirmacion.
+   *
+   * Cambiar el estado de una factura es un hecho administrativo: 'sent' dice
+   * que el documento salio a la calle. Un clic de mas no puede afirmar eso, asi
+   * que cada transicion se pregunta antes, en la misma fila y sin dialogo del
+   * navegador, para que se vea de que factura se trata.
+   */
+  const [confirming, setConfirming] = useState<{ id: string; next: InvoiceStatus; question: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -63,6 +72,7 @@ export default function InvoicesClient() {
     setBusy(null)
     if (res.error) { setError(res.error); return }
     setMarkingPaid(null)
+    setConfirming(null)
     await load()
   }
 
@@ -199,7 +209,7 @@ export default function InvoicesClient() {
                             disabled={busy === inv.id}
                             className="px-2 py-1 rounded-lg bg-[var(--accent)] text-white text-[11px] font-bold disabled:opacity-50"
                           >
-                            Save
+                            Confirm paid
                           </button>
                           <button
                             onClick={() => setMarkingPaid(null)}
@@ -208,20 +218,57 @@ export default function InvoicesClient() {
                             Cancel
                           </button>
                         </div>
+                      ) : confirming?.id === inv.id ? (
+                        <div className="flex items-center gap-2 justify-end">
+                          <span className="text-[11px] font-bold text-[var(--text-primary)]">
+                            {confirming.question}
+                          </span>
+                          <button
+                            onClick={() => changeStatus(inv.id, confirming.next, null)}
+                            disabled={busy === inv.id}
+                            className="px-2 py-1 rounded-lg bg-[var(--accent)] text-white text-[11px] font-bold disabled:opacity-50"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setConfirming(null)}
+                            className="px-2 py-1 text-[11px] font-bold text-[var(--text-secondary)]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex items-center gap-2 justify-end">
-                          {inv.status !== 'sent' && inv.status !== 'paid' && (
+                          {inv.status === 'issued' && (
                             <button
-                              onClick={() => changeStatus(inv.id, 'sent', null)}
+                              onClick={() => setConfirming({
+                                id: inv.id, next: 'sent',
+                                question: `Mark ${inv.invoiceNumber} as sent?`,
+                              })}
                               disabled={busy === inv.id}
                               className="text-[11px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
                             >
                               Mark sent
                             </button>
                           )}
+                          {/* Toda transicion tiene su vuelta atras. Sin esto, un
+                              clic equivocado dejaba la factura marcada para
+                              siempre y solo se arreglaba en la base. */}
+                          {inv.status === 'sent' && (
+                            <button
+                              onClick={() => setConfirming({
+                                id: inv.id, next: 'issued',
+                                question: `Put ${inv.invoiceNumber} back to issued?`,
+                              })}
+                              disabled={busy === inv.id}
+                              className="text-[11px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
+                            >
+                              Undo sent
+                            </button>
+                          )}
                           {inv.status !== 'paid' && inv.status !== 'void' && (
                             <button
-                              onClick={() => { setMarkingPaid(inv.id); setPaidOn(todayIso()) }}
+                              onClick={() => { setConfirming(null); setMarkingPaid(inv.id); setPaidOn(todayIso()) }}
                               className="text-[11px] font-bold text-emerald-700 hover:underline"
                             >
                               Mark paid
@@ -229,7 +276,10 @@ export default function InvoicesClient() {
                           )}
                           {inv.status === 'paid' && (
                             <button
-                              onClick={() => changeStatus(inv.id, 'sent', null)}
+                              onClick={() => setConfirming({
+                                id: inv.id, next: 'sent',
+                                question: `Undo the payment on ${inv.invoiceNumber}?`,
+                              })}
                               disabled={busy === inv.id}
                               className="text-[11px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
                             >
