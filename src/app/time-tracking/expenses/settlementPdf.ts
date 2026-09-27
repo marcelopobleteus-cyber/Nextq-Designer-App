@@ -13,6 +13,7 @@
  */
 
 import { createClient } from '@/utils/supabase/server'
+import { CATEGORY_LABEL, type ExpenseCategory } from './categories'
 import {
   buildExpenseSettlementPdf,
   type SettlementRow,
@@ -80,7 +81,7 @@ export async function buildSettlementReport(
     supabase.from('organizations').select('name, address').eq('id', orgId).maybeSingle(),
     supabase
       .from('project_expenses')
-      .select('id, project_id, spent_on, description, amount, vendor, notes, receipt_path, paid_by, advance_id')
+      .select('id, project_id, spent_on, description, amount, category, vendor, notes, receipt_path, paid_by, advance_id')
       .eq('organization_id', orgId)
       .gte('spent_on', from)
       .lte('spent_on', to)
@@ -105,6 +106,7 @@ export async function buildSettlementReport(
     detail: r.description,
     project: r.project_id ? (projectName.get(r.project_id) ?? '') : '',
     reference: r.notes ?? '',
+    category: CATEGORY_LABEL[r.category as ExpenseCategory] ?? r.category,
     amount: round2(Number(r.amount)),
     hasReceipt: Boolean(r.receipt_path),
   })

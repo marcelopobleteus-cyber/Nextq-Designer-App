@@ -25,6 +25,8 @@ export interface SettlementRow {
   project: string
   /** Auth, bomba, hora, odometro: lo que permite cruzar contra el recibo. */
   reference: string
+  /** "Fuel", "Material"… se muestra en el anexo, donde no cabe el detalle. */
+  category: string
   amount: number
   /** false dibuja el aviso de recibo faltante: sin foto la linea no se sostiene. */
   hasReceipt: boolean
@@ -306,51 +308,69 @@ export async function buildExpenseSettlementPdf(input: SettlementInput): Promise
 
   // ── Anexo: las fotos de los recibos ────────────────────────────────────────
   //
-  // Una hoja por recibo, en el mismo orden del detalle y con el encabezado que
-  // lo identifica. Van al final y no intercaladas: quien aprueba el pago lee
-  // las dos primeras hojas, y quien audita sigue de largo hasta aqui.
+  // Seis por hoja, en tres columnas. La celda es vertical porque la foto de un
+  // recibo tambien lo es: en una grilla de dos columnas la foto quedaria
+  // limitada por el alto de la celda y sobraria la mitad del ancho.
+  //
+  // Cada cuadro lleva solo lo que identifica el gasto en la lista de arriba
+  // (proveedor, fecha, categoria y total). El detalle completo ya esta en el
+  // cuerpo; repetirlo aqui robaria el espacio de la foto, que es lo unico que
+  // esta hoja viene a aportar.
   const annex = [...input.fundRows, ...input.ownRows].filter(r => r.receiptImage)
 
-  for (let i = 0; i < annex.length; i++) {
-    const r = annex[i]
-    const img = r.receiptImage!
+  const COLS = 3
+  const ROWS = 2
+  const GAP_X = 14
+  const GAP_Y = 16
+  const CAPTION = 26
+  const cellW = (right - MARGIN - GAP_X * (COLS - 1)) / COLS
+
+  for (let start = 0; start < annex.length; start += COLS * ROWS) {
     page = pdf.addPage([PAGE_W, PAGE_H])
     y = PAGE_H - MARGIN
 
-    page.drawRectangle({ x: MARGIN, y: y - 30, width: right - MARGIN, height: 30, color: NAVY })
-    page.drawText(`RECEIPT ${i + 1} OF ${annex.length}`, {
-      x: MARGIN + 12, y: y - 20, size: 9, font: bold, color: WHITE,
+    page.drawRectangle({ x: MARGIN, y: y - 26, width: right - MARGIN, height: 26, color: NAVY })
+    const last = Math.min(start + COLS * ROWS, annex.length)
+    page.drawText(`RECEIPTS  ${start + 1}–${last} OF ${annex.length}`, {
+      x: MARGIN + 12, y: y - 17.5, size: 8.5, font: bold, color: WHITE,
     })
-    const amountLabel = money(r.amount)
-    page.drawText(amountLabel, {
-      x: right - 12 - bold.widthOfTextAtSize(amountLabel, 11), y: y - 21,
-      size: 11, font: bold, color: ORANGE,
+    const periodLabel = `${fmtDate(input.periodFrom)} – ${fmtDate(input.periodTo)}`
+    page.drawText(periodLabel, {
+      x: right - 12 - reg.widthOfTextAtSize(periodLabel, 8), y: y - 17.5,
+      size: 8, font: reg, color: PALE,
     })
 
-    y -= 46
-    text(fit(bold, `${fmtDate(r.date)}  ·  ${r.vendor}`, 10, right - MARGIN), MARGIN, 10, bold)
-    y -= 12
-    text(fit(reg, r.detail, 8, right - MARGIN), MARGIN, 8, reg, MUTED)
-    y -= 10
-    const tail = [r.project, r.reference].filter(Boolean).join('  ·  ')
-    text(fit(reg, tail, 8, right - MARGIN), MARGIN, 8, reg, MUTED)
-    y -= 10
+    const gridTop = y - 26 - 14
+    const cellH = (gridTop - 56 - GAP_Y * (ROWS - 1)) / ROWS
 
-    // La foto se escala para caber entera. Recortarla para llenar la hoja es
-    // justo lo que borraria el total o el numero de autorizacion.
-    const boxW = right - MARGIN
-    const boxH = y - 56
-    const scale = Math.min(boxW / img.width, boxH / img.height)
-    const drawW = img.width * scale
-    const drawH = img.height * scale
+    for (let i = start; i < last; i++) {
+      const r = annex[i]
+      const img = r.receiptImage!
+      const col = (i - start) % COLS
+      const row = Math.floor((i - start) / COLS)
+      const x0 = MARGIN + col * (cellW + GAP_X)
+      const top = gridTop - row * (cellH + GAP_Y)
 
-    const embedded = await pdf.embedJpg(img.bytes)
-    page.drawImage(embedded, {
-      x: MARGIN + (boxW - drawW) / 2,
-      y: y - drawH,
-      width: drawW,
-      height: drawH,
-    })
+      y = top - 8
+      text(fit(bold, r.vendor, 7.5, cellW), x0, 7.5, bold)
+      y -= 9
+      text(fit(reg, `${fmtDate(r.date)}  ·  ${r.category}`, 6.5, cellW - 34), x0, 6.5, reg, MUTED)
+      tright(money(r.amount), x0 + cellW, 7.5, bold, ORANGE)
+
+      const boxW = cellW
+      const boxH = cellH - CAPTION
+      const scale = Math.min(boxW / img.width, boxH / img.height)
+      const drawW = img.width * scale
+      const drawH = img.height * scale
+
+      const embedded = await pdf.embedJpg(img.bytes)
+      page.drawImage(embedded, {
+        x: x0 + (boxW - drawW) / 2,
+        y: top - CAPTION - drawH,
+        width: drawW,
+        height: drawH,
+      })
+    }
   }
 
   // Pie en todas las hojas: una rendicion suelta sin origen no sirve de nada.
