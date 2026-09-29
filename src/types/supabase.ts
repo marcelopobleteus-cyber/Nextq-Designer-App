@@ -4123,6 +4123,82 @@ export type Database = {
           },
         ]
       }
+      project_photos: {
+        Row: {
+          accuracy_m: number | null
+          created_at: string
+          height: number | null
+          id: string
+          label: string | null
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          organization_id: string
+          profile_id: string
+          project_id: string
+          storage_path: string
+          taken_at: string
+          updated_at: string | null
+          width: number | null
+        }
+        Insert: {
+          accuracy_m?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          label?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          organization_id: string
+          profile_id: string
+          project_id: string
+          storage_path: string
+          taken_at?: string
+          updated_at?: string | null
+          width?: number | null
+        }
+        Update: {
+          accuracy_m?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          label?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          organization_id?: string
+          profile_id?: string
+          project_id?: string
+          storage_path?: string
+          taken_at?: string
+          updated_at?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_photos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_photos_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_photos_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_pricing: {
         Row: {
           labor_markup_pct: number
