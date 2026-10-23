@@ -6,6 +6,7 @@ import {
   getExpenses, saveExpense, deleteExpense, uploadReceipt,
   type ExpenseItem, type ExpenseInput,
 } from './actions'
+import { prepareUpload } from '@/lib/prepareUpload'
 import { EXPENSE_CATEGORIES, CATEGORY_LABEL, PAID_BY, PAID_BY_LABEL, type ExpenseCategory, type PaidBy } from './categories'
 import { buildSettlementReport } from './settlementPdf'
 
@@ -104,7 +105,12 @@ export default function ExpensesClient({
       paidBy: editing.form.paidBy,
     }
 
-    const res = await saveExpense(editing.id, input)
+    let res: Awaited<ReturnType<typeof saveExpense>>
+    try {
+      res = await saveExpense(editing.id, input)
+    } catch (e) {
+      res = { error: e instanceof Error ? e.message : 'Could not save the expense.' } as typeof res
+    }
     if (res.error || !res.id) {
       setBusy(false)
       setNotice({ text: res.error || 'Could not save the expense.', kind: 'error' })
@@ -114,12 +120,19 @@ export default function ExpensesClient({
     // El recibo se sube DESPUES de guardar: necesita el id del gasto para
     // nombrar el archivo, y asi un fallo de subida no pierde el gasto.
     if (receipt) {
-      const buf = await receipt.arrayBuffer()
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)))
-      const up = await uploadReceipt(res.id, receipt.name, b64, receipt.type || 'image/jpeg')
-      if (up.error) {
+      // Cualquier fallo aqui (archivo ilegible, red, limite de Vercel) se
+      // reporta; antes una excepcion dejaba el boton pegado en "Saving...".
+      let upError: string | null = null
+      try {
+        const file = await prepareUpload(receipt)
+        const up = await uploadReceipt(res.id, file.fileName, file.base64, file.contentType)
+        if (up.error) upError = up.error
+      } catch (e) {
+        upError = e instanceof Error ? e.message : 'Unexpected error while uploading.'
+      }
+      if (upError) {
         setBusy(false)
-        setNotice({ text: `Expense saved, but the receipt did not upload: ${up.error}`, kind: 'error' })
+        setNotice({ text: `Expense saved, but the receipt did not upload: ${upError}`, kind: 'error' })
         setEditing(null); setReceipt(null); load()
         return
       }
@@ -436,7 +449,7 @@ export default function ExpensesClient({
                 <label className={label}>Receipt photo</label>
                 <input type="file" accept="image/*,application/pdf" className={field}
                   onChange={e => setReceipt(e.target.files?.[0] ?? null)} />
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Up to 8 MB. Replaces the one on file.</p>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Photos are resized automatically. PDFs up to 3 MB. Replaces the one on file.</p>
               </div>
               <div className="col-span-2">
                 <label className={label}>Notes</label>
