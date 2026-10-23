@@ -258,8 +258,8 @@ export default function ActiveSessionsPanel({
         }
         message={
           pending?.kind === 'all'
-            ? 'Everyone, including you on your other devices, will be signed out and must sign in again. This device stays signed in. This also applies to NextQ Fleet, which shares the same accounts.'
-            : 'The user will be signed out on that device and must sign in again. This also applies to NextQ Fleet, which shares the same accounts.'
+            ? 'Everyone, including you on your other devices, will be signed out and must sign in again. This device stays signed in.'
+            : 'The user will be signed out on that device and must sign in again.'
         }
         confirmText="Close sessions"
         cancelText="Cancel"
