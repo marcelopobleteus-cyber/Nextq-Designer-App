@@ -17,6 +17,7 @@ import {
   inviteOrganizationOwner,
 } from './actions'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import ActiveSessionsPanel from './ActiveSessionsPanel'
 import { logout } from '@/app/auth/actions'
 import { createClient } from '@/utils/supabase/client'
 
@@ -540,7 +541,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
             { id: 'organizations', label: `Client Companies (${data.organizations.length})` },
             { id: 'modules', label: `Modules & Pricing (${data.modules.length})` },
             { id: 'users', label: `Global Users (${data.users.length})` },
-            { id: 'access', label: `Sign-In Log (${data.signIns.length})` },
+            { id: 'access', label: 'Sessions & Sign-Ins' },
             { id: 'activity', label: 'Cross-Tenant Audit' },
             { id: 'settings', label: 'Platform Controls' },
           ].map(tab => (
@@ -1001,7 +1002,9 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
         {/* TAB 5: SIGN-IN LOG */}
         {activeTab === 'access' && (
           <div className="space-y-4">
-            <div>
+            <ActiveSessionsPanel onToast={showToast} />
+
+            <div className="pt-4">
               <h2 className="text-base font-black text-[var(--text-primary)]">User Sign-In Log</h2>
               <p className="text-xs text-[var(--text-secondary)]">
                 Who has logged in, when, and whether they still have a session open. Every login is recorded from

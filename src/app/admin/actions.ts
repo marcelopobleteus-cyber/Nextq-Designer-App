@@ -1126,3 +1126,78 @@ export async function inviteOrganizationOwner(
 
   return { success: true }
 }
+
+// ---------------------------------------------------------------------------
+// Active sessions (migration 065). Each call is gated twice: verifyPlatformAdmin
+// here, and is_caller_platform_admin() inside the SECURITY DEFINER function.
+// None of them ever closes the session the admin is using.
+// ---------------------------------------------------------------------------
+
+export interface PlatformActiveSessionItem {
+  sessionId: string
+  userId: string
+  email: string
+  fullName: string
+  createdAt: string
+  lastActiveAt: string | null
+  userAgent: string | null
+  ip: string | null
+  isCurrent: boolean
+}
+
+type ActiveSessionRow = {
+  session_id: string
+  user_id: string
+  email: string | null
+  full_name: string | null
+  created_at: string
+  last_active_at: string | null
+  user_agent: string | null
+  ip: string | null
+  is_current: boolean | null
+}
+
+export async function getActiveSessions(): Promise<{ sessions: PlatformActiveSessionItem[]; error?: string }> {
+  const { isAuthorized, supabase } = await verifyPlatformAdmin()
+  if (!isAuthorized) return { sessions: [], error: 'Not authorized' }
+
+  const { data, error } = await (supabase as any).rpc('admin_list_active_sessions')
+  if (error) return { sessions: [], error: error.message }
+
+  return {
+    sessions: ((data || []) as ActiveSessionRow[]).map(r => ({
+      sessionId: r.session_id,
+      userId: r.user_id,
+      email: r.email || '',
+      fullName: r.full_name || 'Anonymous User',
+      createdAt: r.created_at,
+      lastActiveAt: r.last_active_at,
+      userAgent: r.user_agent,
+      ip: r.ip,
+      isCurrent: Boolean(r.is_current),
+    })),
+  }
+}
+
+async function runRevoke(fn: string, args?: Record<string, string>): Promise<{ revoked: number; error?: string }> {
+  const { isAuthorized, supabase } = await verifyPlatformAdmin()
+  if (!isAuthorized) return { revoked: 0, error: 'Not authorized' }
+
+  const { data, error } = await (supabase as any).rpc(fn, args)
+  if (error) return { revoked: 0, error: error.message }
+
+  revalidatePath('/admin')
+  return { revoked: Number(data || 0) }
+}
+
+export async function revokeSession(sessionId: string) {
+  return runRevoke('admin_revoke_session', { p_session_id: sessionId })
+}
+
+export async function revokeUserSessions(userId: string) {
+  return runRevoke('admin_revoke_user_sessions', { p_user_id: userId })
+}
+
+export async function revokeAllSessions() {
+  return runRevoke('admin_revoke_all_sessions')
+}

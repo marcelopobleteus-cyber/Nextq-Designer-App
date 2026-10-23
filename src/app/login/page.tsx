@@ -11,6 +11,7 @@ function LoginForm() {
   // El callback de correo redirige aqui con ?error= cuando el enlace falla. Antes
   // se ignoraba, asi que el usuario aterrizaba en un login mudo sin saber por que.
   const linkError = searchParams.get('error')
+  const idleSignOut = searchParams.get('reason') === 'idle'
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -47,6 +48,12 @@ function LoginForm() {
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold p-3 rounded-lg mb-6 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             Password set successfully! Please sign in with your new password.
+          </div>
+        )}
+
+        {idleSignOut && !error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold p-3 rounded-lg mb-6">
+            You were signed out after 5 minutes of inactivity. Please sign in again.
           </div>
         )}
 

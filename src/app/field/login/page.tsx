@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useEffect, useState, useTransition } from 'react'
 import { loginField } from '../../auth/actions'
 
 // Standalone sign-in screen for field employees. Deliberately separate from
@@ -11,6 +11,14 @@ export default function FieldLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [idleSignOut, setIdleSignOut] = useState(false)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setIdleSignOut(new URLSearchParams(window.location.search).get('reason') === 'idle')
+    }, 0)
+    return () => window.clearTimeout(t)
+  }, [])
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -40,6 +48,12 @@ export default function FieldLoginPage() {
             Use the username and password from your invite
           </p>
         </div>
+
+        {idleSignOut && !error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold p-3 rounded-lg mb-5">
+            Signed out after 5 minutes of inactivity. Sign in again to continue.
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-[var(--danger)] text-xs font-semibold p-3 rounded-lg mb-5">
