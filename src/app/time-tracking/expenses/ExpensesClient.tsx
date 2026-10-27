@@ -66,6 +66,8 @@ export default function ExpensesClient({
   /** A quien se le presenta la rendicion y si lleva las fotos anexas. */
   const [billToId, setBillToId] = useState(defaultBillToId ?? customers[0]?.id ?? '')
   const [attachReceipts, setAttachReceipts] = useState(true)
+  /** En telefono las opciones de la rendicion van plegadas para no empujar la lista. */
+  const [showSettlementOpts, setShowSettlementOpts] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -145,6 +147,18 @@ export default function ExpensesClient({
     load()
   }
 
+  const startEdit = (r: ExpenseItem) => {
+    setReceipt(null)
+    setEditing({
+      id: r.id,
+      form: {
+        projectId: r.projectId ?? '', spentOn: r.spentOn, description: r.description,
+        amount: String(r.amount), category: r.category, vendor: r.vendor ?? '',
+        notes: r.notes ?? '', billable: r.billable, paidBy: r.paidBy,
+      },
+    })
+  }
+
   const remove = async () => {
     if (!confirmDelete) return
     setBusy(true)
@@ -221,8 +235,8 @@ export default function ExpensesClient({
   const th = 'text-left px-4 py-2.5 font-bold text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]'
 
   return (
-    <div className="w-full h-full px-6 py-4 flex-1 flex flex-col overflow-y-auto bg-[var(--bg)] font-sans space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="w-full min-w-0 h-full px-3 sm:px-6 py-4 flex-1 flex flex-col overflow-y-auto overflow-x-hidden bg-[var(--bg)] font-sans space-y-4">
+      <div className="flex items-start justify-between gap-3 sm:gap-4 flex-wrap">
         <div>
           <h1 className="text-sm font-black text-[var(--text-primary)] tracking-tight">Expenses</h1>
           <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 max-w-3xl">
@@ -230,7 +244,7 @@ export default function ExpensesClient({
             <strong> billable</strong> and it becomes a reimbursement line on the invoice for that period.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Link
             href="/time-tracking"
             className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -246,7 +260,7 @@ export default function ExpensesClient({
             {reporting ? 'Building…' : 'Settlement PDF'}
           </button>
           <button type="button" onClick={() => { setEditing({ id: null, form: emptyForm() }); setReceipt(null) }}
-            className="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-[var(--accent)] text-white cursor-pointer">
+            className="order-first sm:order-last w-full sm:w-auto px-3 py-2.5 sm:py-1.5 text-xs sm:text-[11px] font-bold rounded-lg bg-[var(--accent)] text-white cursor-pointer">
             + New expense
           </button>
         </div>
@@ -263,43 +277,47 @@ export default function ExpensesClient({
       )}
 
       <div className={`${card} p-3 flex flex-wrap items-end gap-3`}>
-        <div>
+        <div className="flex-1 min-w-[130px] sm:flex-none">
           <label className={label}>From</label>
           <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-            className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]" />
+            className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]" />
         </div>
-        <div>
+        <div className="flex-1 min-w-[130px] sm:flex-none">
           <label className={label}>To</label>
           <input type="date" value={to} onChange={e => setTo(e.target.value)}
-            className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]" />
+            className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]" />
         </div>
+        <button type="button" onClick={() => setShowSettlementOpts(v => !v)}
+          className="sm:hidden w-full text-left text-[11px] font-bold text-[var(--text-secondary)] cursor-pointer">
+          {showSettlementOpts ? '▾' : '▸'} Settlement options
+        </button>
         {/* Parametros de la rendicion. Viven junto a las fechas y no en el boton
             porque son parte del mismo recorte: periodo, a quien se le presenta,
             y si van las fotos. */}
-        <div>
+        <div className={`${showSettlementOpts ? 'block' : 'hidden'} sm:block w-full sm:w-auto`}>
           <label className={label}>Bill to (settlement)</label>
           <select value={billToId} onChange={e => setBillToId(e.target.value)}
-            className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]">
+            className="w-full sm:w-auto bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)]">
             <option value="">— No customer —</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <label className="flex items-center gap-2 text-[11px] font-bold text-[var(--text-secondary)] cursor-pointer pb-1.5">
+        <label className={`${showSettlementOpts ? 'flex' : 'hidden'} sm:flex items-center gap-2 text-[11px] font-bold text-[var(--text-secondary)] cursor-pointer pb-1.5`}>
           <input type="checkbox" checked={attachReceipts}
             onChange={e => setAttachReceipts(e.target.checked)} />
           Attach receipt photos
         </label>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
           { label: 'Total spent', value: money(totals.total), tone: '' },
           { label: 'Billable', value: money(totals.billable), tone: 'text-emerald-400' },
           { label: 'Entries', value: String(rows.length), tone: '' },
         ].map(m => (
-          <div key={m.label} className={`${card} p-3 h-20 flex flex-col justify-between`}>
-            <span className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">{m.label}</span>
-            <span className={`text-lg font-black tracking-tight font-mono tabular-nums ${m.tone || 'text-[var(--text-primary)]'}`}>{m.value}</span>
+          <div key={m.label} className={`${card} min-w-0 p-2.5 sm:p-3 h-20 flex flex-col justify-between`}>
+            <span className="text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] truncate">{m.label}</span>
+            <span className={`text-sm sm:text-lg font-black tracking-tight font-mono tabular-nums ${m.tone || 'text-[var(--text-primary)]'}`}>{m.value}</span>
           </div>
         ))}
       </div>
@@ -314,7 +332,52 @@ export default function ExpensesClient({
         </div>
       )}
 
-      <div className={`${card} overflow-hidden`}>
+      {/* Telefono: una tarjeta por gasto. La tabla de 8 columnas obligaba a
+          deslizar de lado y dejaba recibo y acciones fuera de pantalla. */}
+      <div className="md:hidden space-y-2">
+        {loading ? (
+          <div className={`${card} px-4 py-6 text-center text-xs text-[var(--text-tertiary)]`}>Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className={`${card} px-4 py-6 text-center text-xs text-[var(--text-tertiary)]`}>
+            No expenses between {fmtDate(from)} and {fmtDate(to)}.
+          </div>
+        ) : rows.map(r => (
+          <div key={r.id} className={`${card} p-3`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-bold text-sm text-[var(--text-primary)] break-words">{r.description}</div>
+                <div className="text-[11px] text-[var(--text-tertiary)] break-words">
+                  {fmtDate(r.spentOn)}{r.vendor ? ` · ${r.vendor}` : ''}
+                </div>
+              </div>
+              <div className="font-mono tabular-nums font-black text-sm text-[var(--text-primary)] shrink-0">{money(r.amount)}</div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+              <span>{CATEGORY_LABEL[r.category]}</span>
+              {r.billable && <span className="px-1.5 py-0.5 rounded border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 text-[9.5px] font-black">BILLABLE</span>}
+              <span className={`font-bold ${r.paidBy === 'company_cash' ? 'text-[var(--accent-text)]' : 'text-[var(--text-tertiary)]'}`}>
+                {r.paidBy === 'company_cash' ? 'Company cash' : 'Own money'}
+              </span>
+              {r.projectName && <span className="text-[var(--text-tertiary)]">{r.projectName}</span>}
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              {r.receiptUrl
+                ? <a href={r.receiptUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[var(--accent-text)]">View receipt</a>
+                : <span className="text-xs text-[var(--text-tertiary)]">No receipt</span>}
+              {r.canEdit && (
+                <div className="flex gap-4">
+                  <button type="button" onClick={() => startEdit(r)}
+                    className="text-xs font-bold text-[var(--text-secondary)] cursor-pointer py-1">Edit</button>
+                  <button type="button" onClick={() => setConfirmDelete(r)}
+                    className="text-xs font-bold text-red-400 cursor-pointer py-1">Delete</button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className={`${card} overflow-hidden hidden md:block`}>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-[var(--text-secondary)]">
             <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
@@ -363,18 +426,7 @@ export default function ExpensesClient({
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {r.canEdit && (
                       <>
-                        <button type="button"
-                          onClick={() => {
-                            setReceipt(null)
-                            setEditing({
-                              id: r.id,
-                              form: {
-                                projectId: r.projectId ?? '', spentOn: r.spentOn, description: r.description,
-                                amount: String(r.amount), category: r.category, vendor: r.vendor ?? '',
-                                notes: r.notes ?? '', billable: r.billable, paidBy: r.paidBy,
-                              },
-                            })
-                          }}
+                        <button type="button" onClick={() => startEdit(r)}
                           className="text-[11px] font-bold text-[var(--text-secondary)] cursor-pointer">Edit</button>
                         <button type="button" onClick={() => setConfirmDelete(r)}
                           className="ml-3 text-[11px] font-bold text-red-400 cursor-pointer">Delete</button>
