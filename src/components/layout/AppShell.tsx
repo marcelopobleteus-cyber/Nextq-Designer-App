@@ -18,7 +18,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <SettingsContext.Provider value={{ openSettings: () => setIsSettingsOpen(true) }}>
-        <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden font-sans transition-colors duration-150">
+        <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden font-sans transition-colors duration-150">
           {children}
         </div>
         {isSettingsOpen && (
