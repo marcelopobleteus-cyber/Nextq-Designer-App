@@ -94,6 +94,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Signed-out visitors at the root see the public cover page (/welcome);
+  // the URL stays "/" so bookmarks and links keep working.
+  if (path === '/' && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/welcome'
+    return NextResponse.rewrite(url, { request })
+  }
+
   if ((path === '/login' || path === '/') && user) {
     const url = request.nextUrl.clone()
     url.pathname = isPlatformAdmin ? '/admin' : '/projects'
