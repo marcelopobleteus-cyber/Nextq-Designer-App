@@ -4,7 +4,7 @@ import './landing.css'
 
 const SITE = 'https://designer.nextqtechnology.com'
 const CONTACT = 'https://nextqtechnology.com/en/contact'
-const TITLE = 'NextQ Designer — Plan CCTV, fiber and network projects in one workspace'
+const TITLE = 'NextQ Designer — Plan CCTV, fiber and network projects'
 const DESC =
   'Map cameras on floor plans and satellite views, design fiber and conduit diagrams, build the bill of materials and guide field crews. A NextQ Technology product.'
 
