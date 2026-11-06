@@ -21,6 +21,7 @@
 .lp-hero h1{font-weight:800;font-size:clamp(34px,5vw,54px);line-height:1.08;letter-spacing:-1.8px;margin:0 0 18px}
 .lp-hero h1 em{font-style:normal;color:var(--o)}
 .lp-hero p.lead{font-size:18px;color:#c9c6bd;max-width:520px;margin:0 0 28px}
+.lp-hero2 p.lead{max-width:640px;margin-left:auto;margin-right:auto}
 .lp-cta{display:flex;gap:12px;flex-wrap:wrap}
 .lp-hero .lp-btn.ghost{color:#fff!important;border-color:#ffffff55}
 .lp-hero .lp-btn.ghost:hover{background:#ffffff14}
@@ -93,3 +94,21 @@
  .lp-sec{padding:60px 0}
 }
 @media(max-width:560px){.lp-steps{grid-template-columns:1fr}}
+/* --- Big-screen layout (same structure as the CleaningIQ cover) --- */
+.lp-hero2{padding:72px 0 80px}
+.lp-hero2 .lp-wrap{display:block}
+.lp-center{max-width:820px;margin:0 auto;text-align:center}
+.lp-center .lp-cta{justify-content:center}
+.lp-center .lead{margin-left:auto;margin-right:auto}
+.lp-hero-shot{max-width:1060px;margin:52px auto 0}
+.lp-big{box-shadow:0 30px 70px #00000040;border:1px solid var(--line);min-width:0}
+.lp-rows{display:grid;gap:96px;margin-top:40px}
+.lp-feat{display:grid;grid-template-columns:.8fr 1.2fr;gap:56px;align-items:center}
+.lp-feat.rev{grid-template-columns:1.2fr .8fr}
+.lp-feat.rev .lp-feat-text{order:2}
+.lp-feat-text h3{font-weight:800;font-size:clamp(24px,3vw,32px);line-height:1.15;letter-spacing:-.8px;margin:0 0 14px}
+.lp-feat-text>p:not(.lp-eyebrow){font-size:17px;color:var(--muted);margin:0 0 18px}
+.lp-feat-text ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.lp-feat-text li{position:relative;padding-left:26px;font-size:15px}
+.lp-feat-text li:before{content:'✓';position:absolute;left:0;color:var(--o-text);font-weight:800}
+@media(max-width:900px){.lp-feat,.lp-feat.rev{grid-template-columns:1fr;gap:28px}.lp-feat.rev .lp-feat-text{order:0}.lp-rows{gap:64px}.lp-hero2{padding:48px 0 48px}}
