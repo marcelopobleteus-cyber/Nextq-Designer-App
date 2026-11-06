@@ -14,6 +14,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - file.svg, globe.svg, next.svg, vercel.svg, window.svg (default Next.js template files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|html)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|html|xml)$).*)',
   ],
 }
