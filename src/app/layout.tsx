@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NextQ Designer Suite",
   description: "Spatial planner for CCTV, networking, power, BOM, and infrastructure deployments.",
+  other: { "msvalidate.01": "68B43AA8CB5A739043A3B6FB34BF9955" },
 };
 
 export default function RootLayout({
