@@ -39,6 +39,16 @@ function Bar({ title }: { title: string }) {
   return <div className="lp-win-bar" aria-hidden="true"><i /><i /><i /><span>{title}</span></div>
 }
 
+function Shot() {
+  return (
+    <div className="lp-win lp-big">
+      <Bar title="designer.nextqtechnology.com" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/landing/projects.jpg" alt="NextQ Designer projects list with sample data" width={1288} height={700} style={{ width: '100%', height: 'auto', display: 'block' }} />
+    </div>
+  )
+}
+
 export default function Welcome() {
   const jsonLd = [
     {
@@ -77,9 +87,9 @@ export default function Welcome() {
         </div>
       </header>
 
-      <section className="lp-hero">
+      <section className="lp-hero lp-hero2">
         <div className="lp-wrap">
-          <div>
+          <div className="lp-center">
             <p className="lp-kicker">INFRASTRUCTURE DESIGN SOFTWARE</p>
             <h1>Design it once. <em>Build it right.</em></h1>
             <p className="lead">Plan CCTV, fiber and network projects on a map or floor plan, keep the materials list with the design and give your field crew what they need.</p>
@@ -89,22 +99,8 @@ export default function Welcome() {
             </div>
             <p className="lp-note">Workspaces are set up by NextQ Technology.</p>
           </div>
-          <div className="lp-win" role="img" aria-label="Illustration of a project map with cameras, sample data">
-            <Bar title="Project map · sample data" />
-            <div className="lp-win-body">
-              <div className="lp-map">
-                <svg viewBox="0 0 400 190" aria-hidden="true">
-                  <path d="M30 150 L130 90 L230 120 L350 50" fill="none" stroke="#FF6A13" strokeWidth="3" strokeDasharray="7 5" />
-                  {[[30, 150], [130, 90], [230, 120], [350, 50]].map(([x, y], i) => (
-                    <g key={i}><circle cx={x} cy={y} r="11" fill="#FF6A13" /><circle cx={x} cy={y} r="4" fill="#fff" /></g>
-                  ))}
-                  <rect x="170" y="30" width="70" height="38" rx="6" fill="#fff" stroke="#E4E4DF" />
-                  <text x="180" y="52" fontSize="11" fill="#6B6B63">Cabinet A</text>
-                </svg>
-              </div>
-              <div className="lp-row" style={{ marginTop: 12 }}><div><strong>CAM-04 · North entrance</strong><small>Switch port 6</small></div><span className="lp-pill ok">Planned</span></div>
-              <div className="lp-row"><div><strong>Fiber route 1</strong><small>Cabinet A to Building B</small></div><span className="lp-pill or">Draft</span></div>
-            </div>
+          <div className="lp-hero-shot">
+            <Shot />
           </div>
         </div>
       </section>
@@ -135,49 +131,74 @@ export default function Welcome() {
         <div className="lp-wrap">
           <p className="lp-eyebrow">PRODUCT TOUR</p>
           <h2>A look at the main screens.</h2>
-          <p className="lp-sub">Illustrations with sample data. Your workspace shows only your own projects.</p>
-          <div className="lp-tour">
-            <div className="lp-card">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/landing/projects.jpg" alt="Projects list with sample data" width={1288} height={700} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block', borderBottom: '1px solid var(--line)' }} />
-              <div className="cap"><h3>Projects</h3><p>One workspace per job with its design, devices, materials and tasks.</p></div>
+          <p className="lp-sub">The projects screen is a real capture with sample names. The other screens are illustrations. Your workspace shows only your own projects.</p>
+          <div className="lp-rows">
+            <div className="lp-feat">
+              <div className="lp-feat-text">
+                <p className="lp-eyebrow">PROJECTS</p>
+                <h3>One workspace per job</h3>
+                <p>Every project keeps its design, devices, materials, tasks and people together, so nothing lives in a loose spreadsheet.</p>
+                <ul><li>Status and client at a glance</li><li>Search and filter your whole portfolio</li><li>Open a project to see its full design</li></ul>
+              </div>
+              <Shot />
             </div>
-            <div className="lp-card">
-              <div className="lp-win" role="img" aria-label="Illustration of a fiber splice diagram">
-                <Bar title="Fiber diagram · sample" />
+            <div className="lp-feat rev">
+              <div className="lp-feat-text">
+                <p className="lp-eyebrow">MAP AND FLOOR PLAN</p>
+                <h3>Place devices where they go</h3>
+                <p>Position cameras, cabinets and fiber routes on a map or floor plan and adjust them visually.</p>
+                <ul><li>Planned and draft items clearly marked</li><li>Fiber and conduit diagrams crews can build from</li><li>Private links to share with customers</li></ul>
+              </div>
+              <div className="lp-win lp-big" role="img" aria-label="Illustration of a project map with cameras, sample data">
+                <Bar title="Project map · illustration" />
                 <div className="lp-win-body">
-                  <div className="lp-map" style={{ height: 150 }}>
-                    <svg viewBox="0 0 400 150" aria-hidden="true">
-                      {[30, 60, 90, 120].map((y, i) => (
-                        <g key={y}><line x1="40" y1={y} x2="360" y2={y} stroke={['#FF6A13', '#2A2926', '#16A34A', '#6B6B63'][i]} strokeWidth="3" /><circle cx="200" cy={y} r="5" fill="#fff" stroke="#171714" /></g>
+                  <div className="lp-map" style={{ height: 230 }}>
+                    <svg viewBox="0 0 400 190" aria-hidden="true">
+                      <path d="M30 150 L130 90 L230 120 L350 50" fill="none" stroke="#FF6A13" strokeWidth="3" strokeDasharray="7 5" />
+                      {[[30, 150], [130, 90], [230, 120], [350, 50]].map(([x, y], i) => (
+                        <g key={i}><circle cx={x} cy={y} r="11" fill="#FF6A13" /><circle cx={x} cy={y} r="4" fill="#fff" /></g>
                       ))}
+                      <rect x="170" y="30" width="70" height="38" rx="6" fill="#fff" stroke="#E4E4DF" />
+                      <text x="180" y="52" fontSize="11" fill="#6B6B63">Cabinet A</text>
                     </svg>
                   </div>
+                  <div className="lp-row" style={{ marginTop: 12 }}><div><strong>CAM-04 · North entrance</strong><small>Switch port 6</small></div><span className="lp-pill ok">Planned</span></div>
+                  <div className="lp-row"><div><strong>Fiber route 1</strong><small>Cabinet A to Building B</small></div><span className="lp-pill or">Draft</span></div>
                 </div>
               </div>
-              <div className="cap"><h3>Fiber and conduit</h3><p>Splice and connectivity diagrams plus conduit sections, kept readable for the crew.</p></div>
             </div>
-            <div className="lp-card">
-              <div className="lp-win" role="img" aria-label="Illustration of a bill of materials">
-                <Bar title="Bill of materials · sample" />
+            <div className="lp-feat">
+              <div className="lp-feat-text">
+                <p className="lp-eyebrow">MATERIALS</p>
+                <h3>The list follows the design</h3>
+                <p>The materials list stays tied to the design, so quotes and purchasing start from real quantities.</p>
+                <ul><li>Quantities from the devices you placed</li><li>Flags for items to check in stock</li><li>Equipment catalog you control</li></ul>
+              </div>
+              <div className="lp-win lp-big" role="img" aria-label="Illustration of a bill of materials">
+                <Bar title="Bill of materials · illustration" />
                 <div className="lp-win-body">
                   <div className="lp-row" style={{ borderTop: 0 }}><div><strong>Outdoor dome camera</strong><small>Qty 24</small></div><span className="lp-pill ok">Listed</span></div>
                   <div className="lp-row"><div><strong>PoE switch, 24 port</strong><small>Qty 2</small></div><span className="lp-pill ok">Listed</span></div>
                   <div className="lp-row"><div><strong>Fiber patch cord</strong><small>Qty 12</small></div><span className="lp-pill warn">Check stock</span></div>
+                  <div className="lp-row"><div><strong>Conduit, 2 in</strong><small>Qty 300 ft</small></div><span className="lp-pill ok">Listed</span></div>
                 </div>
               </div>
-              <div className="cap"><h3>Equipment and materials</h3><p>The materials list follows the design, so quotes and purchasing start from real quantities.</p></div>
             </div>
-            <div className="lp-card">
-              <div className="lp-win" role="img" aria-label="Illustration of field time tracking">
-                <Bar title="Field app · sample" />
+            <div className="lp-feat rev">
+              <div className="lp-feat-text">
+                <p className="lp-eyebrow">FIELD CREW</p>
+                <h3>Technicians know what is next</h3>
+                <p>Employees see their work, track time and log expenses from the phone without calling the office.</p>
+                <ul><li>Clock in and out on site</li><li>Expenses with receipt photos</li><li>Only the jobs assigned to them</li></ul>
+              </div>
+              <div className="lp-win lp-big" role="img" aria-label="Illustration of field time tracking">
+                <Bar title="Field app · illustration" />
                 <div className="lp-win-body">
                   <div className="lp-row" style={{ borderTop: 0 }}><div><strong>Today · Campus fiber backbone</strong><small>Assigned to you</small></div><span className="lp-pill or">Active</span></div>
                   <div className="lp-row"><div><strong>Time on site</strong><small>Clock in and out from the phone</small></div><span className="lp-pill ok">Running</span></div>
                   <div className="lp-row"><div><strong>Expenses</strong><small>Add a receipt photo</small></div><span className="lp-pill warn">1 pending</span></div>
                 </div>
               </div>
-              <div className="cap"><h3>Field crew</h3><p>Technicians see their work, track time and log expenses without calling the office.</p></div>
             </div>
           </div>
         </div>
