@@ -59,7 +59,7 @@ export default function Welcome() {
       operatingSystem: 'Web',
       url: SITE,
       description: DESC,
-      publisher: { '@type': 'Organization', name: 'NextQ Technology LLC', url: 'https://nextqtechnology.com' },
+      publisher: { '@type': 'Organization', name: 'NextQ Technology LLC', url: 'https://nextqtechnology.com', sameAs: ['https://www.linkedin.com/company/nextq-technology-llc'] },
     },
     {
       '@context': 'https://schema.org',
@@ -257,7 +257,7 @@ export default function Welcome() {
       <footer className="lp-foot">
         <div className="lp-wrap">
           <span>© {new Date().getFullYear()} NextQ Technology LLC · NextQ Designer</span>
-          <span><a href="https://nextqtechnology.com">nextqtechnology.com</a><a href="https://nextqtechnology.com/en/privacy">Privacy</a><a href="https://nextqtechnology.com/en/terms">Terms</a></span>
+          <span><a href="https://nextqtechnology.com">nextqtechnology.com</a><a href="https://www.linkedin.com/company/nextq-technology-llc" rel="me noopener noreferrer" target="_blank">LinkedIn</a><a href="https://nextqtechnology.com/en/privacy">Privacy</a><a href="https://nextqtechnology.com/en/terms">Terms</a></span>
         </div>
       </footer>
     </div>
