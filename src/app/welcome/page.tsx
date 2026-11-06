@@ -138,14 +138,8 @@ export default function Welcome() {
           <p className="lp-sub">Illustrations with sample data. Your workspace shows only your own projects.</p>
           <div className="lp-tour">
             <div className="lp-card">
-              <div className="lp-win" role="img" aria-label="Illustration of the projects list">
-                <Bar title="Projects · sample" />
-                <div className="lp-win-body">
-                  <div className="lp-row" style={{ borderTop: 0 }}><div><strong>Warehouse CCTV upgrade</strong><small>24 cameras · 2 cabinets</small></div><span className="lp-pill or">Design</span></div>
-                  <div className="lp-row"><div><strong>Campus fiber backbone</strong><small>3 routes</small></div><span className="lp-pill warn">Field work</span></div>
-                  <div className="lp-row"><div><strong>Retail store network</strong><small>Handed over</small></div><span className="lp-pill ok">Done</span></div>
-                </div>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/landing/projects.jpg" alt="Projects list with sample data" width={1288} height={700} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block', borderBottom: '1px solid var(--line)' }} />
               <div className="cap"><h3>Projects</h3><p>One workspace per job with its design, devices, materials and tasks.</p></div>
             </div>
             <div className="lp-card">
