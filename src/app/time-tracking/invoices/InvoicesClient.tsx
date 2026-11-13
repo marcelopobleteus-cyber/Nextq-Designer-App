@@ -6,6 +6,7 @@ import {
   getLaborInvoices,
   setInvoiceStatus,
   deleteLaborInvoice,
+  getClosedInvoicePdf,
   type LaborInvoiceItem,
   type InvoiceStatus,
 } from './actions'
@@ -74,6 +75,29 @@ export default function InvoicesClient() {
     setMarkingPaid(null)
     setConfirming(null)
     await load()
+  }
+
+  /**
+   * Abre el PDF de la factura cerrada en otra pestana. La pestana se abre ANTES
+   * de pedir el archivo: abrirla despues de un await la bloquea el navegador.
+   */
+  const openPdf = async (inv: LaborInvoiceItem) => {
+    const win = window.open('', '_blank')
+    setBusy(inv.id)
+    const res = await getClosedInvoicePdf(inv.id)
+    setBusy(null)
+    if (res.error || !res.base64) {
+      win?.close()
+      setError(res.error ?? 'Could not open the invoice.')
+      return
+    }
+    const bin = atob(res.base64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+    if (win) win.location.href = url
+    else window.location.href = url
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   const remove = async (inv: LaborInvoiceItem) => {
@@ -161,7 +185,14 @@ export default function InvoicesClient() {
                 return (
                   <tr key={inv.id} className="border-t border-[var(--border)]">
                     <td className="px-4 py-3">
-                      <span className="font-bold text-[var(--text-primary)]">{inv.invoiceNumber}</span>
+                      <button
+                        onClick={() => openPdf(inv)}
+                        disabled={busy === inv.id}
+                        title="Open the invoice as issued (PDF)"
+                        className="font-bold text-[var(--text-primary)] hover:text-[var(--accent-text)] hover:underline disabled:opacity-50"
+                      >
+                        {inv.invoiceNumber}
+                      </button>
                       <span className="block text-[10px] text-[var(--text-tertiary)]">{fmt(inv.invoiceDate)}</span>
                     </td>
                     <td className="px-4 py-3">
@@ -305,7 +336,7 @@ export default function InvoicesClient() {
       </div>
 
       <p className="text-[10px] text-[var(--text-tertiary)]">
-        Click a period to open Payroll filtered to those exact dates and check every figure against the time cards.
+        Click an invoice number to see the invoice exactly as it was issued. Click a period to open Payroll filtered to those exact dates and check every figure against the time cards.
       </p>
     </div>
   )
