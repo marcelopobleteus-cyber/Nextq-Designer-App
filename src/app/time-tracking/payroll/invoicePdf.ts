@@ -94,6 +94,8 @@ interface Built {
   summary: InvoiceSummary
   invoiceNumber: string
   orgId: string
+  /** Las dos partes tal como salieron en el PDF; se guardan para poder reabrirlo igual. */
+  parties: { from: InvoiceParty; billTo: InvoiceParty }
 }
 
 /**
@@ -293,6 +295,7 @@ async function build(
       detail,
       invoiceNumber,
       orgId,
+      parties: { from: fromParty, billTo },
       summary: {
         totalHours,
         laborSubtotal,
@@ -374,6 +377,9 @@ export async function saveLaborInvoice(
         lines: built.lines,
         days: built.detail?.days ?? [],
         expenses: built.detail?.expenses ?? [],
+        // Quien factura y a quien, congelado: el historial reabre el PDF con esto
+        // y no con los datos actuales de la empresa o del cliente.
+        parties: built.parties,
       } as unknown as Json,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'organization_id,invoice_number' })

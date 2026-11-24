@@ -6,6 +6,7 @@ import {
   getLaborInvoices,
   setInvoiceStatus,
   deleteLaborInvoice,
+  getLaborInvoicePdf,
   type LaborInvoiceItem,
   type InvoiceStatus,
 } from './actions'
@@ -38,6 +39,8 @@ export default function InvoicesClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** Factura cuyo PDF se esta armando. */
+  const [opening, setOpening] = useState<string | null>(null)
   /** Factura a la que se le esta pidiendo la fecha de pago. */
   const [markingPaid, setMarkingPaid] = useState<string | null>(null)
   const [paidOn, setPaidOn] = useState(todayIso())
@@ -74,6 +77,36 @@ export default function InvoicesClient() {
     setMarkingPaid(null)
     setConfirming(null)
     await load()
+  }
+
+  /**
+   * Abre el PDF de la factura tal como se emitio. El servidor lo dibuja desde la
+   * foto guardada, asi que es lo mismo que se envio y sirve para revisarlo.
+   */
+  const openPdf = async (inv: LaborInvoiceItem) => {
+    setOpening(inv.id)
+    // La pestana se abre ANTES de esperar al servidor: abierta despues, el
+    // navegador la toma por una ventana emergente no pedida y la bloquea.
+    const tab = window.open('', '_blank')
+    const res = await getLaborInvoicePdf(inv.id)
+    setOpening(null)
+    if (res.error || !res.base64) {
+      tab?.close()
+      setError(res.error ?? 'Could not open the invoice PDF.')
+      return
+    }
+    const bytes = Uint8Array.from(atob(res.base64), c => c.charCodeAt(0))
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+    if (tab) {
+      tab.location.href = url
+    } else {
+      // Pestana bloqueada: se descarga el archivo en vez de perderlo.
+      const a = document.createElement('a')
+      a.href = url
+      a.download = res.fileName ?? `${inv.invoiceNumber}.pdf`
+      a.click()
+    }
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   const remove = async (inv: LaborInvoiceItem) => {
@@ -161,8 +194,36 @@ export default function InvoicesClient() {
                 return (
                   <tr key={inv.id} className="border-t border-[var(--border)]">
                     <td className="px-4 py-3">
-                      <span className="font-bold text-[var(--text-primary)]">{inv.invoiceNumber}</span>
-                      <span className="block text-[10px] text-[var(--text-tertiary)]">{fmt(inv.invoiceDate)}</span>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <span className="font-bold text-[var(--text-primary)]">{inv.invoiceNumber}</span>
+                          <span className="block text-[10px] text-[var(--text-tertiary)]">{fmt(inv.invoiceDate)}</span>
+                        </div>
+                        {/* Fuera de la columna de acciones a proposito: esas
+                            cambian de forma al marcar pagado o confirmar, y el
+                            PDF tiene que estar siempre a mano. */}
+                        <button
+                          type="button"
+                          onClick={() => openPdf(inv)}
+                          disabled={!inv.hasPdf || opening === inv.id}
+                          aria-label={`View PDF of invoice ${inv.invoiceNumber}`}
+                          title={inv.hasPdf
+                            ? 'View the PDF as it was issued'
+                            : 'No saved copy of this older invoice'}
+                          className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--accent-text)] hover:bg-[var(--surface-2)] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--text-secondary)]"
+                        >
+                          <svg
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                            className={opening === inv.id ? 'animate-pulse' : undefined}
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="9" y1="13" x2="15" y2="13" />
+                            <line x1="9" y1="17" x2="15" y2="17" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {/* El enlace lleva la nomina exactamente al rango facturado:
