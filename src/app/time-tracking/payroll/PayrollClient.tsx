@@ -33,6 +33,31 @@ function addDays(d: Date, n: number): Date {
   return out
 }
 
+/**
+ * Ciclo de facturacion: 14 dias, lunes a domingo, y NGT paga los viernes.
+ * Se ancla en un lunes conocido (9-nov-2026, inicio del periodo 11/09-11/22);
+ * de ahi se cuentan periodos hacia atras y hacia adelante.
+ */
+const CYCLE_ANCHOR = new Date(2026, 10, 9)
+const CYCLE_DAYS = 14
+
+interface PayPeriod { from: string; to: string; label: string; kind: 'current' | 'toInvoice' | 'past' }
+
+const shortDay = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+/** Periodo de facturacion numero `idx` (0 = el que arranca en el ancla). */
+function periodAt(idx: number): { start: Date; end: Date } {
+  const start = addDays(CYCLE_ANCHOR, idx * CYCLE_DAYS)
+  return { start, end: addDays(start, CYCLE_DAYS - 1) }
+}
+
+/** Indice del periodo que contiene `d`. */
+function periodIndexOf(d: Date): number {
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const diff = Math.round((day.getTime() - CYCLE_ANCHOR.getTime()) / 86400000)
+  return Math.floor(diff / CYCLE_DAYS)
+}
+
 /** Etiqueta de una semana a partir de su lunes, en la zona local del navegador. */
 function weekLabel(weekStartIso: string): string {
   const [y, m, d] = weekStartIso.split('-').map(Number)
@@ -66,8 +91,12 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
   const today = new Date()
   const thisMonday = mondayOf(today)
 
-  const [from, setFrom] = useState(initialFrom ?? iso(addDays(thisMonday, -7)))
-  const [to, setTo] = useState(initialTo ?? iso(addDays(thisMonday, 6)))
+  // Por defecto: el ultimo periodo ya cerrado, que es el que toca facturar.
+  const currentIdx = periodIndexOf(today)
+  const toInvoice = periodAt(currentIdx - 1)
+
+  const [from, setFrom] = useState(initialFrom ?? iso(toInvoice.start))
+  const [to, setTo] = useState(initialTo ?? iso(toInvoice.end))
   const [rows, setRows] = useState<PayrollWeekRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -315,6 +344,22 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
     setTo(iso(addDays(start, weeks * 7 - 1)))
   }
 
+  /** Los ultimos periodos (el vigente y 5 anteriores), el mas reciente primero. */
+  const payPeriods: PayPeriod[] = useMemo(() => {
+    const cur = periodIndexOf(new Date())
+    const out: PayPeriod[] = []
+    for (let i = cur; i >= cur - 5; i--) {
+      const { start, end } = periodAt(i)
+      out.push({
+        from: iso(start),
+        to: iso(end),
+        label: `${shortDay(start)} – ${shortDay(end)}`,
+        kind: i === cur ? 'current' : i === cur - 1 ? 'toInvoice' : 'past',
+      })
+    }
+    return out
+  }, [])
+
   /** Export para pasarle el periodo a quien procesa la nomina. */
   const exportCsv = () => {
     const head = ['Employee', 'Type', 'Week (Mon–Sun)', 'Regular h', 'Overtime h', 'Total h', 'Rate', 'Total']
@@ -373,7 +418,35 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
         </div>
       </div>
 
-      {/* Periodo */}
+      {/* Periodos de pago listos: un clic y queda el rango correcto */}
+      <div className={`${card} p-3`}>
+        <div className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
+          Pay periods · Monday to Sunday, every 2 weeks
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {payPeriods.map(p => {
+            const active = p.from === from && p.to === to
+            return (
+              <button
+                key={p.from}
+                type="button"
+                onClick={() => { setFrom(p.from); setTo(p.to) }}
+                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border cursor-pointer ${
+                  active
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
+                    : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]'
+                }`}
+              >
+                {p.label}
+                {p.kind === 'toInvoice' && <span className="ml-1.5 font-black">· To invoice</span>}
+                {p.kind === 'current' && <span className="ml-1.5 font-semibold opacity-80">· In progress</span>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Periodo (manual, por si hace falta un rango distinto) */}
       <div className={`${card} p-3 flex flex-wrap items-end gap-3`}>
         <div>
           <label className="block text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">From</label>
