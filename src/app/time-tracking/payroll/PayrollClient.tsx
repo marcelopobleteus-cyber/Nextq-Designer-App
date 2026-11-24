@@ -13,6 +13,7 @@ import { previewLaborInvoice, saveLaborInvoice, suggestInvoiceNumber, type Invoi
 import { getPeriodGaps, type PeriodGap } from './actions'
 import { getCustomers, type CustomerItem } from '@/app/customers/actions'
 import { getBillableTotal } from '../expenses/actions'
+import { periodToInvoice, recentPayPeriods } from '@/lib/payPeriods'
 
 /** Lunes de la semana que contiene `d`. La semana laboral va lunes a domingo. */
 function mondayOf(d: Date): Date {
@@ -31,31 +32,6 @@ function addDays(d: Date, n: number): Date {
   const out = new Date(d)
   out.setDate(out.getDate() + n)
   return out
-}
-
-/**
- * Ciclo de facturacion: 14 dias, lunes a domingo, y NGT paga los viernes.
- * Se ancla en un lunes conocido (9-nov-2026, inicio del periodo 11/09-11/22);
- * de ahi se cuentan periodos hacia atras y hacia adelante.
- */
-const CYCLE_ANCHOR = new Date(2026, 10, 9)
-const CYCLE_DAYS = 14
-
-interface PayPeriod { from: string; to: string; label: string; kind: 'current' | 'toInvoice' | 'past' }
-
-const shortDay = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-
-/** Periodo de facturacion numero `idx` (0 = el que arranca en el ancla). */
-function periodAt(idx: number): { start: Date; end: Date } {
-  const start = addDays(CYCLE_ANCHOR, idx * CYCLE_DAYS)
-  return { start, end: addDays(start, CYCLE_DAYS - 1) }
-}
-
-/** Indice del periodo que contiene `d`. */
-function periodIndexOf(d: Date): number {
-  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const diff = Math.round((day.getTime() - CYCLE_ANCHOR.getTime()) / 86400000)
-  return Math.floor(diff / CYCLE_DAYS)
 }
 
 /** Etiqueta de una semana a partir de su lunes, en la zona local del navegador. */
@@ -92,11 +68,10 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
   const thisMonday = mondayOf(today)
 
   // Por defecto: el ultimo periodo ya cerrado, que es el que toca facturar.
-  const currentIdx = periodIndexOf(today)
-  const toInvoice = periodAt(currentIdx - 1)
+  const toInvoice = periodToInvoice(today)
 
-  const [from, setFrom] = useState(initialFrom ?? iso(toInvoice.start))
-  const [to, setTo] = useState(initialTo ?? iso(toInvoice.end))
+  const [from, setFrom] = useState(initialFrom ?? toInvoice.from)
+  const [to, setTo] = useState(initialTo ?? toInvoice.to)
   const [rows, setRows] = useState<PayrollWeekRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -345,20 +320,7 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
   }
 
   /** Los ultimos periodos (el vigente y 5 anteriores), el mas reciente primero. */
-  const payPeriods: PayPeriod[] = useMemo(() => {
-    const cur = periodIndexOf(new Date())
-    const out: PayPeriod[] = []
-    for (let i = cur; i >= cur - 5; i--) {
-      const { start, end } = periodAt(i)
-      out.push({
-        from: iso(start),
-        to: iso(end),
-        label: `${shortDay(start)} – ${shortDay(end)}`,
-        kind: i === cur ? 'current' : i === cur - 1 ? 'toInvoice' : 'past',
-      })
-    }
-    return out
-  }, [])
+  const payPeriods = useMemo(() => recentPayPeriods(), [])
 
   /** Export para pasarle el periodo a quien procesa la nomina. */
   const exportCsv = () => {
