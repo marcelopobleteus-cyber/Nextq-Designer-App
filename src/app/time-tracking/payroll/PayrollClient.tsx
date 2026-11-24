@@ -13,6 +13,7 @@ import { previewLaborInvoice, saveLaborInvoice, suggestInvoiceNumber, type Invoi
 import { getPeriodGaps, type PeriodGap } from './actions'
 import { getCustomers, type CustomerItem } from '@/app/customers/actions'
 import { getBillableTotal } from '../expenses/actions'
+import { periodToInvoice, recentPayPeriods } from '@/lib/payPeriods'
 
 /** Lunes de la semana que contiene `d`. La semana laboral va lunes a domingo. */
 function mondayOf(d: Date): Date {
@@ -66,8 +67,11 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
   const today = new Date()
   const thisMonday = mondayOf(today)
 
-  const [from, setFrom] = useState(initialFrom ?? iso(addDays(thisMonday, -7)))
-  const [to, setTo] = useState(initialTo ?? iso(addDays(thisMonday, 6)))
+  // Por defecto: el ultimo periodo ya cerrado, que es el que toca facturar.
+  const toInvoice = periodToInvoice(today)
+
+  const [from, setFrom] = useState(initialFrom ?? toInvoice.from)
+  const [to, setTo] = useState(initialTo ?? toInvoice.to)
   const [rows, setRows] = useState<PayrollWeekRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -315,6 +319,9 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
     setTo(iso(addDays(start, weeks * 7 - 1)))
   }
 
+  /** Los ultimos periodos (el vigente y 5 anteriores), el mas reciente primero. */
+  const payPeriods = useMemo(() => recentPayPeriods(), [])
+
   /** Export para pasarle el periodo a quien procesa la nomina. */
   const exportCsv = () => {
     const head = ['Employee', 'Type', 'Week (Mon–Sun)', 'Regular h', 'Overtime h', 'Total h', 'Rate', 'Total']
@@ -373,7 +380,35 @@ export default function PayrollClient({ initialFrom, initialTo }: PayrollClientP
         </div>
       </div>
 
-      {/* Periodo */}
+      {/* Periodos de pago listos: un clic y queda el rango correcto */}
+      <div className={`${card} p-3`}>
+        <div className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5">
+          Pay periods · Monday to Sunday, every 2 weeks
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {payPeriods.map(p => {
+            const active = p.from === from && p.to === to
+            return (
+              <button
+                key={p.from}
+                type="button"
+                onClick={() => { setFrom(p.from); setTo(p.to) }}
+                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border cursor-pointer ${
+                  active
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
+                    : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]'
+                }`}
+              >
+                {p.label}
+                {p.kind === 'toInvoice' && <span className="ml-1.5 font-black">· To invoice</span>}
+                {p.kind === 'current' && <span className="ml-1.5 font-semibold opacity-80">· In progress</span>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Periodo (manual, por si hace falta un rango distinto) */}
       <div className={`${card} p-3 flex flex-wrap items-end gap-3`}>
         <div>
           <label className="block text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">From</label>

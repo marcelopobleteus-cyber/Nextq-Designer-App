@@ -9,6 +9,7 @@ import {
 import { prepareUpload } from '@/lib/prepareUpload'
 import { EXPENSE_CATEGORIES, CATEGORY_LABEL, PAID_BY, PAID_BY_LABEL, type ExpenseCategory, type PaidBy } from './categories'
 import { buildSettlementReport } from './settlementPdf'
+import { periodToInvoice, recentPayPeriods } from '@/lib/payPeriods'
 
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })
@@ -49,10 +50,12 @@ export default function ExpensesClient({
   defaultBillToId: string | null
 }) {
   const today = new Date()
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  // Por defecto: el ultimo periodo cerrado (el que toca facturar), igual que Payroll.
+  const toInvoice = periodToInvoice(today)
+  const payPeriods = useMemo(() => recentPayPeriods(), [])
 
-  const [from, setFrom] = useState(iso(monthStart))
-  const [to, setTo] = useState(iso(today))
+  const [from, setFrom] = useState(toInvoice.from)
+  const [to, setTo] = useState(toInvoice.to)
   const [rows, setRows] = useState<ExpenseItem[]>([])
   const [totals, setTotals] = useState({ total: 0, billable: 0 })
   const [loading, setLoading] = useState(true)
@@ -275,6 +278,27 @@ export default function ExpensesClient({
           {notice.text}
         </div>
       )}
+
+      <div className={`${card} p-3`}>
+        <div className={label}>Pay periods · Monday to Sunday, every 2 weeks</div>
+        <div className="flex flex-wrap gap-1.5">
+          {payPeriods.map(p => {
+            const active = p.from === from && p.to === to
+            return (
+              <button key={p.from} type="button" onClick={() => { setFrom(p.from); setTo(p.to) }}
+                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border cursor-pointer ${
+                  active
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
+                    : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]'
+                }`}>
+                {p.label}
+                {p.kind === 'toInvoice' && <span className="ml-1.5 font-black">· To invoice</span>}
+                {p.kind === 'current' && <span className="ml-1.5 font-semibold opacity-80">· In progress</span>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div className={`${card} p-3 flex flex-wrap items-end gap-3`}>
         <div className="flex-1 min-w-[130px] sm:flex-none">
